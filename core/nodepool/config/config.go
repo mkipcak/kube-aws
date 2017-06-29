@@ -366,10 +366,9 @@ func (c ProvidedConfig) StackNameEnvVarName() string {
 
 func (c ProvidedConfig) VPCRef() string {
 	//This means this VPC already exists, and we can reference it directly by ID
-	if c.VPCID != "" {
-		return fmt.Sprintf("%q", c.VPCID)
-	}
-	return `{"Fn::ImportValue" : {"Fn::Sub" : "${ControlPlaneStackName}-VPC"}}`
+	return c.VPC.Ref(func() string {
+		return `{"Fn::ImportValue" : {"Fn::Sub" : "${ControlPlaneStackName}-VPC"}}`
+	})
 }
 
 func (c ProvidedConfig) SecurityGroupRefs() []string {

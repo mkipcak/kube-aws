@@ -59,6 +59,15 @@ hostedZoneId: "XXXXXXXXXXX"
 `, `
 createRecordSet: true
 hostedZoneId: "XXXXXXXXXXX"
+`, `
+vpc:
+  id: vpc-xxxxx
+routeTable: 
+  id: rtb-xxxxx
+`, `
+vpcId: vpc-xxxxx 
+routeTable:
+  idFromStackOutput: some-ref
 `,
 }
 

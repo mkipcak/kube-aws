@@ -16,14 +16,32 @@ func (i Identifier) HasIdentifier() bool {
 	return i.ID != "" || i.IDFromStackOutput != ""
 }
 
+func (i Identifier) IsBlank() bool {
+	return i.ID == "" && i.IDFromStackOutput == "" && i.IDFromFn == ""
+}
+
+func (i Identifier) IsNotBlank() bool {
+	return i.ID != "" || i.IDFromStackOutput != "" || i.IDFromFn != ""
+}
+
 func (i Identifier) Validate() error {
 	if i.IDFromFn != "" {
 		var jsonHolder map[string]interface{}
 		if err := json.Unmarshal([]byte(i.IDFromFn), &jsonHolder); err != nil {
-			return fmt.Errorf("idFromRef must be a valid json expression but was not: %s", i.IDFromFn)
+			return fmt.Errorf("idFromFn must be a valid json expression but was not: %s", i.IDFromFn)
 		}
 	}
 	return nil
+}
+
+func (i Identifier) String() string {
+	if i.ID != "" {
+		return i.ID
+	} else if i.IDFromStackOutput != "" {
+		return i.IDFromStackOutput
+	} else {
+		return i.IDFromFn
+	}
 }
 
 func (i Identifier) Ref(logicalNameProvider func() string) string {

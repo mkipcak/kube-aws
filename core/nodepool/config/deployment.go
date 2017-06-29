@@ -17,14 +17,14 @@ func (c DeploymentSettings) ValidateInputs() error {
 	// * InstanceCIDR
 	// * MapPublicIPs
 	// * ElasticFileSystemID
-	if c.VPCID != "" {
-		return fmt.Errorf("although you can't customize `vpcId` per node pool but you did specify \"%s\" in your cluster.yaml", c.VPCID)
+	if c.VPC.IsNotBlank() {
+		return fmt.Errorf("although you can't customize `vpc` per node pool but you did specify \"%s\" in your cluster.yaml", c.VPC)
 	}
-	if c.InternetGatewayID != "" {
-		return fmt.Errorf("although you can't customize `internetGatewayId` per node pool but you did specify \"%s\" in your cluster.yaml", c.InternetGatewayID)
+	if c.InternetGateway.IsNotBlank() {
+		return fmt.Errorf("although you can't customize `internetGateway` per node pool but you did specify \"%s\" in your cluster.yaml", c.InternetGateway)
 	}
-	if c.RouteTableID != "" {
-		return fmt.Errorf("although you can't customize `routeTableId` per node pool but you did specify \"%s\" in your cluster.yaml", c.RouteTableID)
+	if c.RouteTable.IsNotBlank() {
+		return fmt.Errorf("although you can't customize `routeTable` per node pool but you did specify \"%s\" in your cluster.yaml", c.RouteTable)
 	}
 	if c.VPCCIDR != "" {
 		return fmt.Errorf("although you can't customize `vpcCIDR` per node pool but you did specify \"%s\" in your cluster.yaml", c.VPCCIDR)

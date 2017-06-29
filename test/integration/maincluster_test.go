@@ -3986,7 +3986,7 @@ worker:
     subnets:
     - name: private1
 `,
-			expectedErrorMessage: `internetGatewayId can't be spcified when all the subnets are existing private subnets`,
+			expectedErrorMessage: `internetGateway can't be specified when all the subnets are existing private subnets`,
 		},
 		{
 			context: "WithNetworkTopologyAllExistingPublicSubnetsRejectingExistingIGW",
@@ -4009,7 +4009,7 @@ worker:
     subnets:
     - name: public1
 `,
-			expectedErrorMessage: `internetGatewayId can't be specified when all the public subnets have existing route tables associated. kube-aws doesn't try to modify an exisinting route table to include a route to the internet gateway`,
+			expectedErrorMessage: `internetGateway can't be specified when all the public subnets have existing route tables associated. kube-aws doesn't try to modify an exisinting route table to include a route to the internet gateway`,
 		},
 		{
 			context: "WithNetworkTopologyAllManagedPublicSubnetsWithExistingRouteTableRejectingExistingIGW",
@@ -4034,7 +4034,7 @@ worker:
     subnets:
     - name: public1
 `,
-			expectedErrorMessage: `internetGatewayId can't be specified when all the public subnets have existing route tables associated. kube-aws doesn't try to modify an exisinting route table to include a route to the internet gateway`,
+			expectedErrorMessage: `internetGateway can't be specified when all the public subnets have existing route tables associated. kube-aws doesn't try to modify an exisinting route table to include a route to the internet gateway`,
 		},
 		{
 			context: "WithNetworkTopologyAllManagedPublicSubnetsMissingExistingIGW",
@@ -4058,7 +4058,7 @@ worker:
     subnets:
     - name: public1
 `,
-			expectedErrorMessage: `internetGatewayId can't be omitted when there're one or more managed public subnets in an existing VPC`,
+			expectedErrorMessage: `internetGateway can't be omitted when there're one or more managed public subnets in an existing VPC`,
 		},
 		{
 			context: "WithNonZeroWorkerCount",

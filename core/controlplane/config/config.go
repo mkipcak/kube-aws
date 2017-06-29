@@ -341,6 +341,19 @@ func (c *Cluster) ConsumeDeprecatedKeys() {
 		fmt.Println("WARN: etcdDataVolumeEncrypted is deprecated and will be removed in v0.9.7. Please use etcd.dataVolume.encrypted instead")
 		c.Etcd.DataVolume.Encrypted = *c.DeprecatedEtcdDataVolumeEncrypted
 	}
+	if c.DeprecatedVPCID != "" {
+		fmt.Println("WARN: vpcID is deprecated and will be removed in v0.9.7. Please use vpc.id instead")
+		c.VPC.ID = c.DeprecatedVPCID
+	}
+	if c.DeprecatedInternetGatewayID != "" {
+		fmt.Println("WARN: internetGatewayID is deprecated and will be removed in v0.9.7. Please use internetGateway.id instead")
+		c.InternetGateway.ID = c.DeprecatedInternetGatewayID
+	}
+	if c.DeprecatedRouteTableID != "" {
+		fmt.Println("WARN: routeTableID is deprecated and will be removed in v0.9.7. Please use routeTable.id instead")
+		c.RouteTable.ID = c.DeprecatedRouteTableID
+	}
+
 }
 
 func (c *Cluster) SetDefaults() {
@@ -351,8 +364,8 @@ func (c *Cluster) SetDefaults() {
 		}
 	}
 
-	privateTopologyImplied := c.RouteTableID != "" && !c.MapPublicIPs
-	publicTopologyImplied := c.RouteTableID != "" && c.MapPublicIPs
+	privateTopologyImplied := c.RouteTable.ID != "" && !c.MapPublicIPs
+	publicTopologyImplied := c.RouteTable.ID != "" && c.MapPublicIPs
 
 	for i, s := range c.Subnets {
 		if s.Name == "" {
@@ -365,7 +378,7 @@ func (c *Cluster) SetDefaults() {
 		// This implies a deployment to an existing VPC with a route table with a preconfigured Internet Gateway
 		// and all the subnets created by kube-aws are public
 		if publicTopologyImplied {
-			c.Subnets[i].RouteTable.ID = c.RouteTableID
+			c.Subnets[i].RouteTable.ID = c.RouteTable.ID
 			if s.Private {
 				panic(fmt.Sprintf("mapPublicIPs(=%v) and subnets[%d].private(=%v) conflicts: %+v", c.MapPublicIPs, i, s.Private, s))
 			}
@@ -378,7 +391,7 @@ func (c *Cluster) SetDefaults() {
 		// This implies a deployment to an existing VPC with a route table with a preconfigured NAT Gateway
 		// and all the subnets created by kube-aws are private
 		if privateTopologyImplied {
-			c.Subnets[i].RouteTable.ID = c.RouteTableID
+			c.Subnets[i].RouteTable.ID = c.RouteTable.ID
 			if s.Private {
 				panic(fmt.Sprintf("mapPublicIPs(=%v) and subnets[%d].private(=%v) conflicts. You don't need to set true to both of them. If you want to make all the subnets private, make mapPublicIPs false. If you want to make only part of subnets private, make subnets[].private true accordingly: %+v", c.MapPublicIPs, i, s.Private, s))
 			}
@@ -464,15 +477,18 @@ type ComputedDeploymentSettings struct {
 // Though it is highly configurable, it's basically users' responsibility to provide `correct` values if they're going beyond the defaults.
 type DeploymentSettings struct {
 	ComputedDeploymentSettings
-	ClusterName       string       `yaml:"clusterName,omitempty"`
-	KeyName           string       `yaml:"keyName,omitempty"`
-	Region            model.Region `yaml:",inline"`
-	AvailabilityZone  string       `yaml:"availabilityZone,omitempty"`
-	ReleaseChannel    string       `yaml:"releaseChannel,omitempty"`
-	AmiId             string       `yaml:"amiId,omitempty"`
-	VPCID             string       `yaml:"vpcId,omitempty"`
-	InternetGatewayID string       `yaml:"internetGatewayId,omitempty"`
-	RouteTableID      string       `yaml:"routeTableId,omitempty"`
+	ClusterName                 string                `yaml:"clusterName,omitempty"`
+	KeyName                     string                `yaml:"keyName,omitempty"`
+	Region                      model.Region          `yaml:",inline"`
+	AvailabilityZone            string                `yaml:"availabilityZone,omitempty"`
+	ReleaseChannel              string                `yaml:"releaseChannel,omitempty"`
+	AmiId                       string                `yaml:"amiId,omitempty"`
+	DeprecatedVPCID             string                `yaml:"vpcId,omitempty"`
+	VPC                         model.Vpc             `yaml:"vpc,omitempty"`
+	DeprecatedInternetGatewayID string                `yaml:"internetGatewayId,omitempty"`
+	InternetGateway             model.InternetGateway `yaml:"internetGateway,omitempty"`
+	DeprecatedRouteTableID      string                `yaml:"routeTableId,omitempty"`
+	RouteTable                  model.RouteTable      `yaml:"routeTable,omitempty"`
 	// Required for validations like e.g. if instance cidr is contained in vpc cidr
 	VPCCIDR                string            `yaml:"vpcCIDR,omitempty"`
 	InstanceCIDR           string            `yaml:"instanceCIDR,omitempty"`
@@ -998,11 +1014,10 @@ func (c Config) VPCLogicalName() string {
 }
 
 func (c Config) VPCRef() string {
-	if c.VPCID != "" {
-		return fmt.Sprintf("%q", c.VPCID)
-	} else {
-		return fmt.Sprintf(`{ "Ref" : %q }`, c.VPCLogicalName())
-	}
+	ref, _ := c.VPC.RefOrError(func() (string, error) {
+		return c.VPCLogicalName(), nil
+	})
+	return ref
 }
 
 func (c Config) InternetGatewayLogicalName() string {
@@ -1010,11 +1025,10 @@ func (c Config) InternetGatewayLogicalName() string {
 }
 
 func (c Config) InternetGatewayRef() string {
-	if c.InternetGatewayID != "" {
-		return fmt.Sprintf("%q", c.InternetGatewayID)
-	} else {
-		return fmt.Sprintf(`{ "Ref" : %q }`, c.InternetGatewayLogicalName())
-	}
+	ref, _ := c.InternetGateway.RefOrError(func() (string, error) {
+		return c.InternetGatewayLogicalName(), nil
+	})
+	return ref
 }
 
 // ExternalDNSNames returns all the DNS names of Kubernetes API endpoints should be covered in the TLS cert for k8s API
@@ -1207,7 +1221,11 @@ func (c DeploymentSettings) Valid() (*DeploymentValidationResult, error) {
 		return nil, errors.New("kmsKeyArn must be set")
 	}
 
-	if c.VPCID == "" && (c.RouteTableID != "" || c.InternetGatewayID != "") {
+	vpcSpecified := c.DeprecatedVPCID != "" || c.VPC.ID != ""
+	routeTableSpecified := c.DeprecatedRouteTableID != ""
+	internetGatewaySpecified := c.DeprecatedInternetGatewayID != ""
+
+	if !vpcSpecified && (routeTableSpecified || internetGatewaySpecified) {
 		return nil, errors.New("vpcId must be specified if routeTableId or internetGatewayId are specified")
 	}
 
@@ -1276,29 +1294,29 @@ func (c DeploymentSettings) Valid() (*DeploymentValidationResult, error) {
 				)
 			}
 
-			if subnet.RouteTableID() != "" && c.RouteTableID != "" {
-				return nil, fmt.Errorf("either subnets[].routeTable.id(%s) or routeTableId(%s) but not both can be specified", subnet.RouteTableID(), c.RouteTableID)
+			if subnet.RouteTableID() != "" && c.DeprecatedRouteTableID != "" {
+				return nil, fmt.Errorf("either subnets[].routeTable.id(%s) or routeTableId(%s) but not both can be specified", subnet.RouteTableID(), c.DeprecatedRouteTableID)
 			}
 
-			if subnet.ManageSubnet() && (subnet.Public() && c.MapPublicIPs) && c.VPCID != "" && (subnet.ManageRouteTable() && c.RouteTableID == "") && c.InternetGatewayID == "" {
-				return nil, errors.New("internetGatewayId can't be omitted when there're one or more managed public subnets in an existing VPC")
+			if subnet.ManageSubnet() && (subnet.Public() && c.MapPublicIPs) && c.VPC.IsNotBlank() && (subnet.ManageRouteTable() && c.RouteTable.IsBlank()) && c.InternetGateway.IsBlank() {
+				return nil, errors.New("internetGateway can't be omitted when there're one or more managed public subnets in an existing VPC")
 			}
 		}
 
 		// All the subnets are explicitly/implicitly(they're public by default) configured to be "public".
 		// They're also configured to reuse existing route table(s).
 		// However, the IGW, which won't be applied to anywhere, is specified
-		if (allPublic && c.MapPublicIPs) && (c.RouteTableID != "" || allExistingRouteTable) && c.InternetGatewayID != "" {
-			return nil, errors.New("internetGatewayId can't be specified when all the public subnets have existing route tables associated. kube-aws doesn't try to modify an exisinting route table to include a route to the internet gateway")
+		if (allPublic && c.MapPublicIPs) && (c.RouteTable.IsNotBlank() || allExistingRouteTable) && c.InternetGateway.IsNotBlank() {
+			return nil, errors.New("internetGateway can't be specified when all the public subnets have existing route tables associated. kube-aws doesn't try to modify an exisinting route table to include a route to the internet gateway")
 		}
 
 		// All the subnets are explicitly configured to be "private" but the IGW, which won't be applied anywhere, is specified
-		if (allPrivate || !c.MapPublicIPs) && c.InternetGatewayID != "" {
-			return nil, errors.New("internetGatewayId can't be spcified when all the subnets are existing private subnets")
+		if (allPrivate || !c.MapPublicIPs) && c.InternetGateway.IsNotBlank() {
+			return nil, errors.New("internetGateway can't be specified when all the subnets are existing private subnets")
 		}
 
-		if c.RouteTableID != "" && !allPublic && !allPrivate {
-			return nil, fmt.Errorf("network topology including both private and public subnets specified while the single route table(%s) is also specified. You must differentiate the route table at least between private and public subnets. Use subets[].routeTable.id instead of routeTableId for that.", c.RouteTableID)
+		if c.RouteTable.IsNotBlank() && !allPublic && !allPrivate {
+			return nil, fmt.Errorf("network topology including both private and public subnets specified while the single route table(%s) is also specified. You must differentiate the route table at least between private and public subnets. Use subets[].routeTable.id instead of routeTable for that.", c.RouteTable)
 		}
 
 		for i, a := range instanceCIDRs {
